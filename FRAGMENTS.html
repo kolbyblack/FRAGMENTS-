@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FRAGMENTS | A Non-linear Story</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.5/ScrollTrigger.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        dark: '#0a0a0a',
+                        darker: '#050505',
+                        accent: '#c4a14e',
+                        blue: {
+                            dark: '#1a2c3f',
+                            darker: '#0f1a25'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        title: ['Montserrat', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Montserrat:wght@300;600;800&display=swap');
+        
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            background-color: #0a0a0a;
+            color: white;
+            overflow-x: hidden;
+        }
+        
+        .timeline-element {
+            opacity: 0;
+            transform: translateY(50px);
+        }
+        
+        .fade-in {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        
+        .title-reveal span {
+            display: inline-block;
+            opacity: 0;
+            transform: translateY(20px);
+            transition-property: opacity, transform;
+            transition-duration: 0.5s;
+        }
+        
+        .image-container {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .image-container img {
+            transition: transform 1.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+        }
+        
+        .image-container:hover img {
+            transform: scale(1.05);
+        }
+        
+        .hidden-context {
+            position: absolute;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s, transform 0.5s;
+            pointer-events: none;
+        }
+        
+        .context-visible .hidden-context {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+        
+        .perspective-container {
+            transition: transform 1.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+            transform-style: preserve-3d;
+        }
+        
+        .reverse-content {
+            transform: translateY(0);
+        }
+        
+        .memory-fragment {
+            cursor: pointer;
+        }
+        
+        .fragment-details {
+            height: 0;
+            overflow: hidden;
+            transition: height 0.5s ease;
+        }
+        
+        .fragment-details.active {
+            height: auto;
+        }
+        
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            width: 0%;
+            background-color: #c4a14e;
+            z-index: 100;
+            transition: width 0.1s;
+        }
+        
+        .vignette {
+            pointer-events: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, transparent 50%, rgba(0, 0, 0, 0.8) 150%);
+            z-index: 50;
+        }
+        
+        .time-marker {
+            position: fixed;
+            writing-mode: vertical-lr;
+            text-orientation: mixed;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 300;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            opacity: 0.5;
+            transition: opacity 0.3s;
+        }
+        
+        .time-marker.active {
+            opacity: 1;
+            color: #c4a14e;
+        }
+        
+        .horizontal-scroll {
+            display: flex;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            scrollbar-width: none;
+        }
+        
+        .horizontal-scroll::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .horizontal-scroll > div {
+            flex: 0 0 100%;
+            scroll-snap-align: start;
+        }
+    </style>
+</head>
+<body class="font-sans text-white">
+    <div class="progress-bar"></div>
+    <div class="vignette"></div>
+    
+    <!-- Time Markers -->
+    <div class="time-marker left-4 top-1/4" data-time="before">BEFORE</div>
+    <div class="time-marker right-4 top-1/3" data-time="present">PRESENT</div>
+    <div class="time-marker left-4 bottom-1/4" data-time="after">AFTER</div>
+    
+    <!-- Intro Section -->
+    <section id="intro" class="h-screen flex items-center justify-center relative overflow-hidden">
+        <div class="absolute inset-0 z-0">
+            <img src="https://i.pinimg.com/736x/47/00/1e/47001e5abd4c5f01df82c8bb513c07d9.jpg" alt="Dark city skyline" class="object-cover w-full h-full opacity-30">
+        </div>
+        <div class="container mx-auto px-4 z-10 text-center">
+            <h1 class="text-5xl md:text-7xl font-title font-bold mb-6 title-reveal">
+                <span class="inline-block">F</span>
+                <span class="inline-block">R</span>
+                <span class="inline-block">A</span>
+                <span class="inline-block">G</span>
+                <span class="inline-block">M</span>
+                <span class="inline-block">E</span>
+                <span class="inline-block">N</span>
+                <span class="inline-block">T</span>
+                <span class="inline-block">S</span>
+            </h1>
+            <p class="text-xl md:text-2xl font-light max-w-2xl mx-auto opacity-0 fade-in mt-4">
+                Memory is unreliable. Time is not linear. Truth is elusive.
+            </p>
+            <div class="mt-12 opacity-0 fade-in">
+                <button id="begin-button" class="px-8 py-3 bg-transparent border border-white hover:border-accent hover:text-accent transition-colors duration-300 uppercase tracking-wider">
+                    Begin
+                </button>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Memory 1: Future/Present Event (Mysterious Scene) -->
+    <section id="memory1" class="timeline-element min-h-screen flex items-center relative py-24" data-time="present">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row items-center">
+                <div class="md:w-1/2 mb-8 md:mb-0">
+                    <div class="image-container rounded-lg overflow-hidden shadow-2xl mx-auto max-w-lg">
+                        <img src="https://i.pinimg.com/736x/33/52/0f/33520fcdc0d85ad4ebcc29aa620222e9.jpg" alt="Empty apartment with single chair" class="w-full">
+                        <div class="hidden-context bg-darker bg-opacity-90 absolute inset-0 p-8 flex items-end">
+                            <div>
+                                <span class="text-accent uppercase tracking-wider text-sm">Present Day</span>
+                                <h3 class="text-2xl font-title font-bold mt-2">The Empty Room</h3>
+                                <p class="mt-4 text-gray-300">The apartment sits empty now. Only shadows remain where memories once lived.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="md:w-1/2 md:pl-12">
+                    <span class="text-accent uppercase tracking-wider text-sm font-semibold">Memory Fragment #1</span>
+                    <h2 class="text-4xl font-title font-bold mt-2">The Aftermath</h2>
+                    <p class="mt-6 text-gray-300 leading-relaxed">
+                        I return to the apartment hours after it happened. Police tape still hangs from the doorframe, fluttering with the breeze. No one lived here now. No one ever would again.
+                    </p>
+                    <div class="mt-8">
+                        <button class="memory-fragment px-4 py-2 text-sm uppercase tracking-wider text-accent hover:text-white transition-colors flex items-center">
+                            <span class="mr-2">Examine Closer</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8L22 12L18 16"></path><path d="M2 12H22"></path></svg>
+                        </button>
+                        <div class="fragment-details mt-4 text-sm bg-blue-darker p-4 rounded">
+                            <p class="mb-4 text-gray-400">There's a faint marking on the wall near where the chair sits. It looks like a date: <span class="text-accent">11.06</span>.</p>
+                            <p class="text-gray-400">A small photograph lies face down on the floor. It shows a man and woman smiling together. Faces unrecognizable—as if deliberately scratched out.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Memory 2: Past Event (Happy Scene) -->
+    <section id="memory2" class="timeline-element min-h-screen flex items-center relative py-24 bg-blue-darker" data-time="before">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row-reverse items-center">
+                <div class="md:w-1/2 mb-8 md:mb-0">
+                    <div class="image-container rounded-lg overflow-hidden shadow-2xl mx-auto max-w-lg">
+                        <img src="https://i.pinimg.com/736x/9f/15/56/9f15562774df4850d1207bdb7c6bcac0.jpg" alt="Couple at dinner table" class="w-full">
+                        <div class="hidden-context bg-darker bg-opacity-90 absolute inset-0 p-8 flex items-end">
+                            <div>
+                                <span class="text-accent uppercase tracking-wider text-sm">6 Months Earlier</span>
+                                <h3 class="text-2xl font-title font-bold mt-2">The Celebration</h3>
+                                <p class="mt-4 text-gray-300">They seemed happy that night. No one could have predicted what would follow.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="md:w-1/2 md:pr-12">
+                    <span class="text-accent uppercase tracking-wider text-sm font-semibold">Memory Fragment #2</span>
+                    <h2 class="text-4xl font-title font-bold mt-2">The Beginning</h2>
+                    <p class="mt-6 text-gray-300 leading-relaxed">
+                        The dinner was perfect. Candles flickered across the table as they celebrated their anniversary. He gave her a small box - inside, a key to their new apartment. She cried with joy.
+                    </p>
+                    <div class="mt-8">
+                        <button class="memory-fragment px-4 py-2 text-sm uppercase tracking-wider text-accent hover:text-white transition-colors flex items-center">
+                            <span class="mr-2">Examine Closer</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8L22 12L18 16"></path><path d="M2 12H22"></path></svg>
+                        </button>
+                        <div class="fragment-details mt-4 text-sm bg-dark p-4 rounded">
+                            <p class="mb-4 text-gray-400">In the corner of the image, a framed newspaper clipping is visible on the wall. The headline reads: "<span class="text-accent">Local Man Found Innocent In Controversial Case</span>".</p>
+                            <p class="text-gray-400">The woman's expression, when viewed closely, seems forced. Her smile doesn't reach her eyes.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Memory 3: The Clue -->
+    <section id="memory3" class="timeline-element min-h-screen flex items-center relative py-24" data-time="after">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row items-center">
+                <div class="md:w-1/2 mb-8 md:mb-0">
+                    <div class="image-container rounded-lg overflow-hidden shadow-2xl mx-auto max-w-lg">
+                        <img src="https://i.pinimg.com/736x/54/89/19/548919de1f6b8d720d837825d9d98501.jpg" alt="Letter and photograph on desk" class="w-full">
+                        <div class="hidden-context bg-darker bg-opacity-90 absolute inset-0 p-8 flex items-end">
+                            <div>
+                                <span class="text-accent uppercase tracking-wider text-sm">1 Month After</span>
+                                <h3 class="text-2xl font-title font-bold mt-2">The Evidence</h3>
+                                <p class="mt-4 text-gray-300">Hidden away, this letter revealed everything - and nothing at all.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="md:w-1/2 md:pl-12">
+                    <span class="text-accent uppercase tracking-wider text-sm font-semibold">Memory Fragment #3</span>
+                    <h2 class="text-4xl font-title font-bold mt-2">The Discovery</h2>
+                    <p class="mt-6 text-gray-300 leading-relaxed">
+                        Among her things, they found an unsent letter. It revealed she had known about the accusations all along. She had been planning to leave that night - but never got the chance.
+                    </p>
+                    <div class="mt-8">
+                        <button class="memory-fragment px-4 py-2 text-sm uppercase tracking-wider text-accent hover:text-white transition-colors flex items-center">
+                            <span class="mr-2">Examine Closer</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8L22 12L18 16"></path><path d="M2 12H22"></path></svg>
+                        </button>
+                        <div class="fragment-details mt-4 text-sm bg-blue-darker p-4 rounded">
+                            <p class="mb-4 text-gray-400">The letter is dated <span class="text-accent">11.06</span> - the same numbers from the wall marking.</p>
+                            <p class="text-gray-400">At the bottom of the page, a hand-written note: "<span class="text-accent">I know what you did. I can't live with this anymore.</span>"</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Memory 4: The Revelation (Perspective Change) -->
+    <section id="memory4" class="timeline-element min-h-screen flex items-center relative py-24 bg-blue-darker" data-time="present">
+        <div class="container mx-auto px-4">
+            <div class="perspective-container">
+                <div class="initial-perspective">
+                    <div class="flex flex-col md:flex-row-reverse items-center">
+                        <div class="md:w-1/2 mb-8 md:mb-0">
+                            <div class="image-container rounded-lg overflow-hidden shadow-2xl mx-auto max-w-lg">
+                                <img src="https://i.pinimg.com/736x/de/26/56/de265615bb7dce30e43fe3718bff9f58.jpg" alt="Man standing at window" class="w-full">
+                            </div>
+                        </div>
+                        <div class="md:w-1/2 md:pr-12">
+                            <span class="text-accent uppercase tracking-wider text-sm font-semibold">Memory Fragment #4</span>
+                            <h2 class="text-4xl font-title font-bold mt-2">The Truth</h2>
+                            <p class="mt-6 text-gray-300 leading-relaxed">
+                                I stood in the empty apartment one last time. I am the only one who knows what really happened that night. The truth is more complex than anyone realizes.
+                            </p>
+                            <div class="mt-8">
+                                <button id="reveal-perspective" class="px-4 py-2 text-sm uppercase tracking-wider text-accent hover:text-white transition-colors flex items-center">
+                                    <span class="mr-2">Change Perspective</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="alternate-perspective hidden">
+                    <div class="flex flex-col md:flex-row items-center">
+                        <div class="md:w-1/2 mb-8 md:mb-0">
+                            <div class="image-container rounded-lg overflow-hidden shadow-2xl mx-auto max-w-lg">
+                                <img src="https://i.pinimg.com/736x/3b/bb/43/3bbb43d81724aaf65f5753b66d56b51f.jpg" alt="Police officer examining evidence" class="w-full">
+                            </div>
+                        </div>
+                        <div class="md:w-1/2 md:pl-12">
+                            <span class="text-accent uppercase tracking-wider text-sm font-semibold">Memory Fragment #4 - Alternate View</span>
+                            <h2 class="text-4xl font-title font-bold mt-2">The Investigation</h2>
+                            <p class="mt-6 text-gray-300 leading-relaxed">
+                                Detective Morgan examined the apartment one final time. The case was considered closed - a tragic domestic incident. But something didn't add up. The letter, the markings, the timing. Someone else had been there that night.
+                            </p>
+                            <div class="mt-8">
+                                <button id="reveal-truth" class="px-4 py-2 text-sm uppercase tracking-wider bg-accent text-dark hover:bg-white transition-colors">
+                                    Reveal Final Truth
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Memory 5: The Reverse Timeline (Final Revelation) -->
+    <section id="memory5" class="min-h-screen flex items-center relative py-24 bg-dark hidden">
+        <div class="container mx-auto px-4">
+            <div class="text-center max-w-3xl mx-auto mb-20">
+                <span class="text-accent uppercase tracking-wider text-sm font-semibold">Final Fragment</span>
+                <h2 class="text-5xl font-title font-bold mt-2">The Circle Closes</h2>
+                <p class="mt-6 text-gray-300 leading-relaxed">
+                    Time folds back on itself. The beginning is the ending. The witness becomes the perpetrator. The investigation leads back to where it started.
+                </p>
+            </div>
+            
+            <div class="reverse-section">
+                <div class="horizontal-scroll h-screen">
+                    <div class="flex items-center justify-center h-full w-screen">
+                        <div class="image-container rounded-lg overflow-hidden shadow-2xl max-w-2xl w-full">
+                            <img src="https://i.pinimg.com/736x/83/9d/4e/839d4e50656b22f4665d64e0301ebced.jpg" alt="Empty apartment with police tape" class="w-full">
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <div class="reverse-content bg-darker bg-opacity-90 p-8 max-w-lg">
+                                    <h3 class="text-3xl font-title font-bold">Where It Began</h3>
+                                    <p class="mt-4 text-gray-300">
+                                        The detective was the witness. The witness was the lover. The lover was the victim. The victim knew too much.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-center h-full w-screen">
+                        <div class="image-container rounded-lg overflow-hidden shadow-2xl max-w-2xl w-full">
+                            <img src="https://i.pinimg.com/736x/4b/27/53/4b2753c994f5a7d7bbcdca7c7753688e.jpg" alt="Calendar with date circled" class="w-full">
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <div class="reverse-content bg-darker bg-opacity-90 p-8 max-w-lg">
+                                    <h3 class="text-3xl font-title font-bold">11.06</h3>
+                                    <p class="mt-4 text-gray-300">
+                                        Not a date. An apartment number. Where the truth had been hidden all along. Behind the walls of Room 1106. Where it all began. Where it would end.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Ending Section -->
+    <section id="ending" class="min-h-screen flex items-center justify-center relative py-24 bg-black hidden">
+        <div class="container mx-auto px-4 text-center">
+            <h2 class="text-6xl font-title font-bold mb-8 opacity-0 fade-in">FRAGMENTS</h2>
+            <p class="text-xl font-light max-w-2xl mx-auto opacity-0 fade-in">
+                The truth exists only in fragments. Your memory constructs the rest.
+            </p>
+            <div class="mt-16 opacity-0 fade-in">
+                <button id="restart-button" class="px-8 py-3 bg-transparent border border-white hover:border-accent hover:text-accent transition-colors duration-300 uppercase tracking-wider">
+                    Begin Again
+                </button>
+            </div>
+        </div>
+    </section>
+    
+
+
+<!--JAVASCRIPT SCROLL TRIGGERS-->
+    
+    
+    <script>
+        // Register GSAP ScrollTrigger
+        gsap.registerPlugin(ScrollTrigger);
+        
+        // Initialize animations when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Progress bar
+            window.addEventListener('scroll', () => {
+                const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+                const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+                const scrolled = (winScroll / height) * 100;
+                document.querySelector('.progress-bar').style.width = scrolled + '%';
+            });
+            
+            // Initialize title animation
+            const titleLetters = document.querySelectorAll('.title-reveal span');
+            gsap.to(titleLetters, {
+                opacity: 1,
+                y: 0,
+                stagger: 0.1,
+                delay: 0.5,
+                ease: "power3.out"
+            });
+            
+            // Initialize fade-in elements
+            const fadeElements = document.querySelectorAll('.fade-in');
+            gsap.to(fadeElements, {
+                opacity: 1,
+                y: 0,
+                stagger: 0.2,
+                delay: 1.5,
+                ease: "power2.out"
+            });
+            
+            // Initialize timeline elements
+            const timelineElements = document.querySelectorAll('.timeline-element');
+            timelineElements.forEach(element => {
+                gsap.to(element, {
+                    scrollTrigger: {
+                        trigger: element,
+                        start: "top 80%",
+                        end: "bottom 20%",
+                        toggleActions: "play none none reverse"
+                    },
+                    opacity: 1,
+                    y: 0,
+                    duration: 1,
+                    ease: "power3.out"
+                });
+            });
+            
+            // Image hover effect for context
+            const imageContainers = document.querySelectorAll('.image-container');
+            imageContainers.forEach(container => {
+                container.addEventListener('click', () => {
+                    container.classList.toggle('context-visible');
+                });
+            });
+            
+            // Memory fragment details
+            const memoryFragments = document.querySelectorAll('.memory-fragment');
+            memoryFragments.forEach(fragment => {
+                fragment.addEventListener('click', () => {
+                    const details = fragment.nextElementSibling;
+                    details.classList.toggle('active');
+                });
+            });
+            
+            // Perspective change
+            const revealPerspectiveBtn = document.getElementById('reveal-perspective');
+            if (revealPerspectiveBtn) {
+                revealPerspectiveBtn.addEventListener('click', () => {
+                    const container = document.querySelector('.perspective-container');
+                    container.style.transform = 'rotateY(180deg)';
+                    
+                    setTimeout(() => {
+                        document.querySelector('.initial-perspective').classList.add('hidden');
+                        document.querySelector('.alternate-perspective').classList.remove('hidden');
+                        container.style.transform = 'rotateY(0deg)';
+                    }, 750);
+                });
+            }
+            
+            // Reveal final truth
+            const revealTruthBtn = document.getElementById('reveal-truth');
+            if (revealTruthBtn) {
+                revealTruthBtn.addEventListener('click', () => {
+                    document.getElementById('memory5').classList.remove('hidden');
+                    
+                    // Smooth scroll to memory5
+                    document.getElementById('memory5').scrollIntoView({ behavior: 'smooth' });
+                    
+                    // Setup reverse scrolling effect
+                    const reverseSection = document.querySelector('.reverse-section');
+                    
+                    ScrollTrigger.create({
+                        trigger: reverseSection,
+                        start: "top 50%",
+                        end: "bottom 50%",
+                        onUpdate: (self) => {
+                            const progress = self.progress;
+                            const scrollContainer = document.querySelector('.horizontal-scroll');
+                            const maxScroll = scrollContainer.scrollWidth - scrollContainer.clientWidth;
+                            scrollContainer.scrollLeft = progress * maxScroll;
+                        }
+                    });
+                    
+                    // Show ending after a delay
+                    setTimeout(() => {
+                        document.getElementById('ending').classList.remove('hidden');
+                        
+                        // Animate ending elements
+                        const endingFades = document.querySelectorAll('#ending .fade-in');
+                        gsap.to(endingFades, {
+                            scrollTrigger: {
+                                trigger: '#ending',
+                                start: "top 80%",
+                            },
+                            opacity: 1,
+                            y: 0,
+                            stagger: 0.3,
+                            ease: "power3.out"
+                        });
+                    }, 3000);
+                });
+            }
+            
+            // Time markers activation
+            function updateTimeMarkers() {
+                const sections = document.querySelectorAll('section[data-time]');
+                const markers = document.querySelectorAll('.time-marker');
+                
+                sections.forEach(section => {
+                    const rect = section.getBoundingClientRect();
+                    if (rect.top < window.innerHeight / 2 && rect.bottom > window.innerHeight / 2) {
+                        const time = section.getAttribute('data-time');
+                        
+                        markers.forEach(marker => {
+                            if (marker.getAttribute('data-time') === time) {
+                                marker.classList.add('active');
+                            } else {
+                                marker.classList.remove('active');
+                            }
+                        });
+                    }
+                });
+            }
+            
+            window.addEventListener('scroll', updateTimeMarkers);
+            
+            // Begin button
+            const beginButton = document.getElementById('begin-button');
+            if (beginButton) {
+                beginButton.addEventListener('click', () => {
+                    document.getElementById('memory1').scrollIntoView({ behavior: 'smooth' });
+                });
+            }
+            
+            // Restart button
+            const restartButton = document.getElementById('restart-button');
+            if (restartButton) {
+                restartButton.addEventListener('click', () => {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    
+                    // Reset hidden sections
+                    document.getElementById('memory5').classList.add('hidden');
+                    document.getElementById('ending').classList.add('hidden');
+                    
+                    // Reset perspective
+                    document.querySelector('.initial-perspective').classList.remove('hidden');
+                    document.querySelector('.alternate-perspective').classList.add('hidden');
+                    
+                    // Reset fragment details
+                    document.querySelectorAll('.fragment-details').forEach(detail => {
+                        detail.classList.remove('active');
+                    });
+                    
+                    // Reset context visibility
+                    document.querySelectorAll('.image-container').forEach(container => {
+                        container.classList.remove('context-visible');
+                    });
+                });
+            }
+            
+            // Add subtle parallax effect to images
+            document.querySelectorAll('.image-container img').forEach(img => {
+                gsap.to(img, {
+                    scrollTrigger: {
+                        trigger: img,
+                        start: "top bottom",
+                        end: "bottom top",
+                        scrub: true
+                    },
+                    y: 50,
+                    ease: "none"
+                });
+            });
+        });
+    </script>
+</body>
+</html>
